@@ -6,26 +6,40 @@ use App\Http\Requests\StoreUnit;
 use App\Http\Requests\UpdateUnit;
 use App\Http\Resources\UnitResource;
 use App\Models\Unit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class UnitController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $units = auth()->user()->units;
-        if ($units->count() == 0) {
+        $search = $request->input('search');
+        $query = auth()->user()->units();
+
+        if ($search) {
+            $query->where(function ($query) use ($search) {
+                $query->where('name', 'like', '%' . $search . '%')
+                    ->orWhere('area', 'like', '%' . $search . '%')
+                    ->orWhere('address', 'like', '%' . $search . '%')
+                    ->orWhere('unit_type', 'like', '%' . $search . '%')
+                    ->orWhere('rooms', 'like', '%' . $search . '%')
+                    ->orWhere('bathrooms', 'like', '%' . $search . '%');
+            });
+        }
+        $units = $query->get();
+
+        if ($units->isEmpty()) {
             return response()->json([
                 "success" => true,
-                "message" => "No units yet",
+                "message" => "No units found",
                 "data" => [],
             ]);
-        } else {
-            return response()->json([
-                "success" => true,
-                "message" => "Units retrieved successfully",
-                "data" => UnitResource::collection($units),
-            ]);
         }
+        return response()->json([
+            "success" => true,
+            "message" => "Units retrieved successfully",
+            "data" => UnitResource::collection($units),
+        ]);
     }
 
     public function store(StoreUnit $request)
